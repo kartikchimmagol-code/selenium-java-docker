@@ -1,0 +1,42 @@
+
+name: Selenium Java Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  selenium-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Run Selenium tests with Docker
+        run: |
+          docker network create selenium-test-net
+          docker run -d --name selenium-chrome-test \
+            --network selenium-test-net \
+            selenium/standalone-chrome:latest
+          docker run -d --name login-web \
+            --network selenium-test-net \
+            -p 8000:80 \
+            -v "$GITHUB_WORKSPACE/webpage:/usr/share/nginx/html:ro" \
+            nginx:alpine
+          docker run --rm \
+            --network selenium-test-net \
+            -v "$GITHUB_WORKSPACE:/app" \
+            -w /app \
+            maven:3.9-eclipse-temurin-17 \
+            mvn test
